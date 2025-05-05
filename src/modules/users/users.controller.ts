@@ -35,7 +35,7 @@ export class UsersController {
   @ApiResponse({ status: 500, description: 'Internal server error.' })
   async getUserDetails(@Query('msisdn') msisdn: string , @Query('pin') pin: string) {
     try {
-      const user = await this.userService.getUser(msisdn);
+      const user = await this.userService.getUser(msisdn, pin);
       return user;
     } catch (error) {
       if (error.message.includes('Unauthorized')) {
@@ -74,5 +74,27 @@ export class UsersController {
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
-  }
+    }
+    @Get('transactions')
+    @ApiOperation({ summary: 'Get user transactions by MSISDN and PIN' })
+    @ApiQuery({
+      name: 'msisdn',
+      type: String,
+      description: 'MSISDN of the user',
+      required: true,
+    })
+    @ApiQuery({ name: 'pin', type: String, description: 'PIN for transaction inquiry', required: true })
+    @ApiResponse({
+      status: 200,
+      description: 'User transactions retrieved successfully.',
+    })
+    @ApiResponse({ status: 500, description: 'Internal server error.' })
+    async getUserTransactions( @Query('msisdn') msisdn: string, @Query('pin') pin: string) {
+      try {
+        const transactions = await this.userService.getUserTranscactions(msisdn, pin);
+        return transactions;
+      } catch (error) {
+        throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    }
 }

@@ -66,3 +66,42 @@ export function buildGetFeesParams(params: {
     payee_provider_id: params.payee_provider_id ?? '101',
   };
 }
+
+export function buildUserEnquiryParams(params: {
+  pin: string;
+  em?: string;
+  msisdn: string;
+  provider?: string;
+  payid?: string;
+  usertype?: 'CHANNEL' | 'SUBSCRIBER' | 'MERCHANT' | 'OPERATOR';
+  blocksms?: 'BOTH' | 'NONE';
+  country_id: string;
+}) {
+  return {
+    ...params,
+    payid: params.payid ?? '12',
+    blocksms: params.blocksms ?? 'BOTH',
+    provider: params.provider ?? '101',
+    usertype: params.usertype ?? 'SUBSCRIBER',
+  };
+}
+export function buildUserLastTransactionParams(params: {
+  pin: string;
+  em?: string;
+  msisdn: string;
+  provider?: string;
+  payid?: string;
+  service?: string;
+  nooftxnreq?: string;
+  blocksms?: 'PAYER' | 'BOTH' | 'PAYEE' | 'NONE';
+  txnmode?: 'P2P' | 'P2B' | 'B2P' | 'B2B';
+  country_id: string;
+}) {
+  return {
+    ...params,
+    payid: params.payid ?? '12',
+    blocksms: params.blocksms ?? 'BOTH',
+      provider: params.provider ?? '101',
+    nooftxnreq: params.nooftxnreq ?? '5',
+  };
+}

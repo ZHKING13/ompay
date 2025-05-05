@@ -225,14 +225,14 @@ this.logger.log(`url MPAY: ${url}`);
 
   async customerLastNTransaction(params: {
     pin: string;
-    em: string;
+    em?: string;
     msisdn: string;
     provider?: string;
     payid?: string;
     service?: string;
-    nooftxnreq: string;
-    blocksms: 'PAYER' | 'BOTH' | 'PAYEE' | 'NONE';
-    txnmode: 'P2P' | 'P2B' | 'B2P' | 'B2B';
+    nooftxnreq?: string;
+    blocksms?: 'PAYER' | 'BOTH' | 'PAYEE' | 'NONE';
+    txnmode?: 'P2P' | 'P2B' | 'B2P' | 'B2B';
     country_id: string;
   }) {
     const baseUrl = this.config.get('addon.tangoUrl');
@@ -274,12 +274,12 @@ this.logger.log(`url MPAY: ${url}`);
   }
   async userEnquiry(params: {
     pin: string;
-    em: string;
+    em?: string;
     msisdn: string;
     provider?: string;
     payid?: string;
-    usertype: 'CHANNEL' | 'SUBSCRIBER' | 'MERCHANT' | 'OPERATOR';
-    blocksms: 'BOTH' | 'NONE';
+    usertype?: 'CHANNEL' | 'SUBSCRIBER' | 'MERCHANT' | 'OPERATOR';
+    blocksms?: 'BOTH' | 'NONE';
     country_id: string;
   }) {
     const baseUrl = this.config.get('addon.tangoUrl');
