@@ -1,0 +1,325 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { firstValueFrom } from 'rxjs';
+import { Histogram } from 'prom-client';
+import { InjectMetric } from '@willsoto/nestjs-prometheus';
+import { XMLParser } from 'fast-xml-parser';
+import { ApiAuthService } from 'src/service/auth.service';
+import { buildGetFeesParams, buildMerchantPaymentParams, buildP2PInitParams } from 'src/common/utils/tango.helpers';
+@Injectable()
+export class TangoService {
+  private readonly logger = new Logger(TangoService.name);
+  private parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '',
+    parseTagValue: true,
+  });
+  constructor(
+    private readonly http: HttpService,
+    private readonly authService: ApiAuthService,
+    private readonly config: ConfigService,
+    @InjectMetric('tango_api_request_duration_seconds')
+    private readonly durationHistogram: Histogram<string>,
+  ) {}
+
+  async getCustomerBalance(params: {
+    msisdn: string;
+    pin: string;
+    provider?: string;
+    payid?: string;
+    blocksms?: 'PAYER' | 'BOTH' | 'NONE';
+    em?: string;
+    txnmode?: string;
+    service_id?: string;
+    country_id: string;
+    addon_id: string;
+  }) {
+    const baseUrl = this.config.get('addon.tangoUrl');
+    const url = new URL('/customerbalance', baseUrl);
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        url.searchParams.append(key, value);
+      }
+    });
+
+    const start = Date.now();
+
+    const endTimer = this.durationHistogram.startTimer({
+      endpoint: 'customerbalance',
+    });
+    try {
+      const headers = {
+        Authorization: `Bearer ${await this.authService.getAccessToken()}`,
+      };
+      const response = await firstValueFrom(
+        this.http.get(url.toString(), { headers }),
+      );
+
+      const duration = Date.now() - start;
+      this.logger.log(`GET /wallet/customerbalance responded in ${duration}ms`);
+
+      return this.parseXmlToJson(response);
+    } catch (error) {
+      const duration = Date.now() - start;
+      this.logger.error(
+        `GET /wallet/customerbalance failed after ${duration}ms: ${error.message}`,
+      );
+      throw error;
+    } finally {
+      endTimer();
+    }
+  }
+  async getFees(params: {
+    amount: string;
+    service_type: string;
+    payer_user_type: 'CHANNEL' | 'SUBSCRIBER' | 'MERCHANT' | 'OPERATOR';
+    payer_account_id: string;
+    payer_provider_id: string;
+    payer_pay_id: string;
+    payee_user_type: 'CHANNEL' | 'SUBSCRIBER' | 'MERCHANT' | 'OPERATOR';
+    payee_account_id: string;
+    payee_provider_id: string;
+    payee_pay_id: string;
+    country_id: string;
+    addon_id: string;
+  }) {
+    const baseUrl = this.config.get('addon.tangoUrl');
+    const url = new URL('/pricing', baseUrl);
+const fullParams = buildGetFeesParams(params);
+    this.logger.log(`url PRICING: ${url}`);
+    Object.entries(fullParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        url.searchParams.append(key, value);
+      }
+    });
+
+    const start = Date.now();
+    const endTimer = this.durationHistogram.startTimer({
+      endpoint: 'customerbalance',
+    });
+    try {
+      const headers = {
+        Authorization: `Bearer ${await this.authService.getAccessToken()}`,
+      };
+      const response = await firstValueFrom(
+        this.http.get(url.toString(), { headers }),
+      );
+
+      const duration = Date.now() - start;
+      this.logger.log(`GET /wallet/pricing responded in ${duration}ms`);
+      return this.parseXmlToJson(response);
+    } catch (error) {
+      const duration = Date.now() - start;
+      this.logger.error(
+        `GET /wallet/pricing failed after ${duration}ms: ${error.message}`,
+      );
+      throw error;
+    } finally {
+      endTimer();
+    }
+  }
+
+  async p2pInit(params: {
+    amount: string;
+    msisdn: string;
+    msisdn2: string;
+    pin: string;
+    em?: string;
+    provider?: string;
+    provider2?: string;
+    payid?: string;
+    payid2?: string;
+    blocksms: 'PAYER' | 'BOTH' | 'PAYEE' | 'NONE';
+    txnmode: 'P2P' ;
+    country_id: string;
+  }) {
+    const baseUrl = this.config.get('addon.tangoUrl');
+    const url = new URL('/p2pinit', baseUrl);
+const fullParams = buildP2PInitParams(params);
+    this.logger.log(`url P2P: ${url}`);
+    Object.entries(fullParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        url.searchParams.append(key, value);
+      }
+    });
+
+    const start = Date.now();
+
+    const endTimer = this.durationHistogram.startTimer({
+      endpoint: 'p2pinit',
+    });
+    try {
+      const headers = {
+        Authorization: `Bearer ${await this.authService.getAccessToken()}`,
+      };
+      const response = await firstValueFrom(
+        this.http.get(url.toString(), { headers }),
+      );
+
+      const duration = Date.now() - start;
+      this.logger.log(`GET /p2pinit responded in ${duration}ms`);
+      return this.parseXmlToJson(response);
+    } catch (error) {
+      const duration = Date.now() - start;
+      this.logger.error(
+        `GET /p2pinit failed after ${duration}ms: ${error.message}`,
+      );
+      throw error;
+    } finally {
+      endTimer();
+    }
+  }
+
+  async merchantPaymentOneStep(params: {
+    amount: string;
+    mercode: string;
+    pin2: string; //user pin
+    msisdn2: string; //user phone number
+    msisdn?: string; //marchant phone number
+    provider?: string;
+    provider2?: string;
+    payid?: string;
+    payid2?: string;
+    blocksms?: 'PAYER' | 'BOTH' | 'PAYEE' | 'NONE';
+    txnmode?: 'P2P' | 'B2B' | 'C2B';
+    service_id?: string;
+    country_id: string;
+  }) {
+    const baseUrl = this.config.get('addon.tangoUrl');
+    const url = new URL('/merchantpaymentonestep', baseUrl);
+    const fullParams = buildMerchantPaymentParams(params);
+
+    Object.entries(fullParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        url.searchParams.append(key, value);
+      }
+    });
+this.logger.log(`url MPAY: ${url}`);
+    const start = Date.now();
+    const endTimer = this.durationHistogram.startTimer({
+      endpoint: 'merchantPaymentOneStep',
+    });
+    try {
+      const headers = {
+        Authorization: `Bearer ${await this.authService.getAccessToken()}`,
+      };
+      const response = await firstValueFrom(
+        this.http.get(url.toString(), { headers }),
+      );
+
+      const duration = Date.now() - start;
+      this.logger.log(`GET /merchantpaymentonestep responded in ${duration}ms`);
+      return this.parseXmlToJson(response);
+    } catch (error) {
+      const duration = Date.now() - start;
+      this.logger.error(
+        `GET /merchantpaymentonestep failed after ${duration}ms: ${error.message}`,
+      );
+      throw error;
+    } finally {
+      endTimer();
+    }
+  }
+
+  async customerLastNTransaction(params: {
+    pin: string;
+    em: string;
+    msisdn: string;
+    provider?: string;
+    payid?: string;
+    service?: string;
+    nooftxnreq: string;
+    blocksms: 'PAYER' | 'BOTH' | 'PAYEE' | 'NONE';
+    txnmode: 'P2P' | 'P2B' | 'B2P' | 'B2B';
+    country_id: string;
+  }) {
+    const baseUrl = this.config.get('addon.tangoUrl');
+    const url = new URL('/customerlastntransaction', baseUrl);
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        url.searchParams.append(key, value.toString());
+      }
+    });
+
+    const start = Date.now();
+
+    const endTimer = this.durationHistogram.startTimer({
+      endpoint: 'customerlastntransaction',
+    });
+    try {
+      const headers = {
+        Authorization: `Bearer ${await this.authService.getAccessToken()}`,
+      };
+      const response = await firstValueFrom(
+        this.http.get(url.toString(), { headers }),
+      );
+
+      const duration = Date.now() - start;
+      this.logger.log(
+        `GET /wallet/customerlastntransaction responded in ${duration}ms`,
+      );
+      return this.parseXmlToJson(response);
+    } catch (error) {
+      const duration = Date.now() - start;
+      this.logger.error(
+        `GET /wallet/customerlastntransaction failed after ${duration}ms: ${error.message}`,
+      );
+      throw error;
+    } finally {
+      endTimer();
+    }
+  }
+  async userEnquiry(params: {
+    pin: string;
+    em: string;
+    msisdn: string;
+    provider?: string;
+    payid?: string;
+    usertype: 'CHANNEL' | 'SUBSCRIBER' | 'MERCHANT' | 'OPERATOR';
+    blocksms: 'BOTH' | 'NONE';
+    country_id: string;
+  }) {
+    const baseUrl = this.config.get('addon.tangoUrl');
+    const url = new URL('GET /userenquiry', baseUrl);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        url.searchParams.append(key, value.toString());
+      }
+    });
+
+    const start = Date.now();
+
+    const endTimer = this.durationHistogram.startTimer({
+      endpoint: 'userenquiry',
+    });
+    try {
+      const headers = {
+        Authorization: `Bearer ${await this.authService.getAccessToken()}`,
+      };
+      const response = await firstValueFrom(
+        this.http.get(url.toString(), { headers }),
+      );
+
+      const duration = Date.now() - start;
+      this.logger.log(`GET /userenquiry responded in ${duration}ms`);
+      return this.parseXmlToJson(response);
+    } catch (error) {
+      const duration = Date.now() - start;
+      this.logger.error(
+        `GET /userenquiry failed after ${duration}ms: ${error.message}`,
+      );
+      throw error;
+    } finally {
+      endTimer();
+    }
+  }
+  parseXmlToJson(response: any) {
+    const xml = response.data;
+    const json = this.parser.parse(xml);
+    this.logger.log(`response  ${json}`);
+    return json;
+  }
+}

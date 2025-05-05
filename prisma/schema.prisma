@@ -1,0 +1,45 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+// generator client {
+//   provider = "prisma-client-js"
+//   output   = "./generated/prisma"
+// }
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Transaction{
+  id          String   @id @default(cuid())
+  amount      Float
+  from String
+  to String
+  status      TransactionStatus
+  type        TransactionType
+  txnId String?
+  country String?
+  date        DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum TransactionStatus {
+  Pending
+  Completed
+  Failed
+  Canceled
+}
+
+enum TransactionType {
+  MPay
+  P2P
+}
