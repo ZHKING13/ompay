@@ -6,7 +6,16 @@ import { Histogram } from 'prom-client';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import { XMLParser } from 'fast-xml-parser';
 import { ApiAuthService } from 'src/service/auth.service';
-import { buildGetFeesParams, buildMerchantPaymentParams, buildP2PInitParams } from 'src/common/utils/tango.helpers';
+import {
+  buildGetFeesParams,
+  buildMerchantPaymentParams,
+  buildP2PInitParams,
+} from 'src/common/utils/tango.helpers';
+import {
+  TangoResponse,
+  TangoBalanceResponse,
+} from './interfaces/tango-response.interface';
+
 @Injectable()
 export class TangoService {
   private readonly logger = new Logger(TangoService.name);
@@ -34,7 +43,7 @@ export class TangoService {
     service_id?: string;
     country_id: string;
     addon_id: string;
-  }) {
+  }): Promise<TangoBalanceResponse> {
     const baseUrl = this.config.get('addon.tangoUrl');
     const url = new URL('/customerbalance', baseUrl);
 
@@ -60,7 +69,8 @@ export class TangoService {
       const duration = Date.now() - start;
       this.logger.log(`GET /wallet/customerbalance responded in ${duration}ms`);
 
-      return this.parseXmlToJson(response);
+      const rawResponse = this.parseXmlToJson(response) as TangoResponse;
+      return this.transformBalanceResponse(rawResponse);
     } catch (error) {
       const duration = Date.now() - start;
       this.logger.error(
@@ -71,6 +81,44 @@ export class TangoService {
       endTimer();
     }
   }
+
+  private transformBalanceResponse(
+    rawResponse: TangoResponse,
+  ): TangoBalanceResponse {
+    const { broker_response, mapping_response, wallet_response } =
+      rawResponse.response;
+
+    // Extraire les frais du message s'ils existent
+    const feeRegex =
+      /service charge (\d+(?:\.\d+)?)(?: FCFA)?.*Commission (\d+(?:\.\d+)?)/i;
+    const feeMatch = wallet_response.message.match(feeRegex);
+
+    const fees = feeMatch
+      ? {
+          serviceCharge: parseFloat(feeMatch[1]) || 0,
+          commission: parseFloat(feeMatch[2]) || 0,
+        }
+      : undefined;
+
+    return {
+      sessionId: broker_response.session_id,
+      status: {
+        code: wallet_response.txnstatus,
+        message: broker_response.broker_msg,
+      },
+      balance: {
+        available: parseFloat(wallet_response.balance) || 0,
+        frozen: parseFloat(wallet_response.frbalance) || 0,
+      },
+      transaction: {
+        id: wallet_response.txnid,
+        type: wallet_response.type,
+        reference: wallet_response.trid,
+      },
+      ...(fees && { fees }),
+    };
+  }
+
   async getFees(params: {
     amount: string;
     service_type: string;
@@ -85,9 +133,9 @@ export class TangoService {
     country_id: string;
     addon_id: string;
   }) {
-    const baseUrl = this.config.get('addon.tangoUrl');
+    const baseUrl = this.config.get('addon.brokerUrl');
     const url = new URL('/pricing', baseUrl);
-const fullParams = buildGetFeesParams(params);
+    const fullParams = buildGetFeesParams(params);
     this.logger.log(`url PRICING: ${url}`);
     Object.entries(fullParams).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -132,12 +180,12 @@ const fullParams = buildGetFeesParams(params);
     payid?: string;
     payid2?: string;
     blocksms: 'PAYER' | 'BOTH' | 'PAYEE' | 'NONE';
-    txnmode: 'P2P' ;
+    txnmode: 'P2P';
     country_id: string;
   }) {
-    const baseUrl = this.config.get('addon.tangoUrl');
+    const baseUrl = this.config.get('addon.brokerUrl');
     const url = new URL('/p2pinit', baseUrl);
-const fullParams = buildP2PInitParams(params);
+    const fullParams = buildP2PInitParams(params);
     this.logger.log(`url P2P: ${url}`);
     Object.entries(fullParams).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -187,7 +235,7 @@ const fullParams = buildP2PInitParams(params);
     service_id?: string;
     country_id: string;
   }) {
-    const baseUrl = this.config.get('addon.tangoUrl');
+    const baseUrl = this.config.get('addon.brokerUrl');
     const url = new URL('/merchantpaymentonestep', baseUrl);
     const fullParams = buildMerchantPaymentParams(params);
 
@@ -196,7 +244,7 @@ const fullParams = buildP2PInitParams(params);
         url.searchParams.append(key, value);
       }
     });
-this.logger.log(`url MPAY: ${url}`);
+    this.logger.log(`url MPAY: ${url}`);
     const start = Date.now();
     const endTimer = this.durationHistogram.startTimer({
       endpoint: 'merchantPaymentOneStep',
@@ -235,7 +283,7 @@ this.logger.log(`url MPAY: ${url}`);
     txnmode?: 'P2P' | 'P2B' | 'B2P' | 'B2B';
     country_id: string;
   }) {
-    const baseUrl = this.config.get('addon.tangoUrl');
+    const baseUrl = this.config.get('addon.brokerUrl');
     const url = new URL('/customerlastntransaction', baseUrl);
 
     Object.entries(params).forEach(([key, value]) => {
@@ -282,8 +330,13 @@ this.logger.log(`url MPAY: ${url}`);
     blocksms?: 'BOTH' | 'NONE';
     country_id: string;
   }) {
-    const baseUrl = this.config.get('addon.tangoUrl');
-    const url = new URL('GET /userenquiry', baseUrl);
+    const baseUrl = this.config.get('addon.brokerUrl');
+    const url = new URL('/userenquiry', baseUrl);
+
+    this.logger.log(
+      `Tentative de requête userenquiry pour msisdn: ${params.msisdn}`,
+    );
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         url.searchParams.append(key, value.toString());
@@ -291,25 +344,36 @@ this.logger.log(`url MPAY: ${url}`);
     });
 
     const start = Date.now();
-
     const endTimer = this.durationHistogram.startTimer({
       endpoint: 'userenquiry',
     });
+
     try {
       const headers = {
         Authorization: `Bearer ${await this.authService.getAccessToken()}`,
       };
+
+      this.logger.log(`Envoi de la requête vers : ${url.toString()}`);
+
       const response = await firstValueFrom(
         this.http.get(url.toString(), { headers }),
       );
 
       const duration = Date.now() - start;
       this.logger.log(`GET /userenquiry responded in ${duration}ms`);
-      return this.parseXmlToJson(response);
+
+      const result = this.parseXmlToJson(response);
+      this.logger.log('Réponse userenquiry reçue', { result });
+
+      return result;
     } catch (error) {
       const duration = Date.now() - start;
       this.logger.error(
         `GET /userenquiry failed after ${duration}ms: ${error.message}`,
+        {
+          error: error.stack,
+          params,
+        },
       );
       throw error;
     } finally {

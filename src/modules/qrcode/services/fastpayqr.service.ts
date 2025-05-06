@@ -39,7 +39,7 @@ export class FastPayQRService implements QRCodePartnerService {
       };
     }
 
-    // ✅ REAL CALL
+    // call api
     const endpoint = `${config.apiUrl}/merchant/all`;
     try {
       const response = await firstValueFrom(

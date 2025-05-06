@@ -22,19 +22,14 @@ export class TransactionService {
     private paymentDurationHistogram: Histogram,
   ) {}
 
-  async createPayment(createPaymentDto: CreateTransactionDto) {
+  async createPayment(data: CreateTransactionDto) {
     const startTime = Date.now();
 
     try {
       const payment = await this.prisma.transaction.create({
         data: {
-          ...createPaymentDto,
+          ...data,
           status: 'Pending',
-          from: 'user',
-          to: 'aggregator',
-          amount: 100,
-          type: 'MPay',
-          date: new Date(),
         },
       });
 
