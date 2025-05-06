@@ -380,10 +380,41 @@ export class TangoService {
       endTimer();
     }
   }
-  parseXmlToJson(response: any) {
-    const xml = response.data;
-    const json = this.parser.parse(xml);
-    this.logger.log(`response  ${json}`);
-    return json;
+  private parseXmlToJson(response: any) {
+    try {
+      if (!response?.data) {
+        this.logger.error('Réponse XML invalide : données manquantes');
+        throw new Error('Réponse XML invalide : données manquantes');
+      }
+
+      const xml = response.data;
+
+      // Log du XML brut en mode debug
+      this.logger.debug('XML brut reçu:', { xml });
+
+      const json = this.parser.parse(xml);
+
+      // Validation basique de la structure de la réponse
+      if (!json?.response) {
+        this.logger.error('Structure JSON invalide après parsing', { json });
+        throw new Error('Structure de réponse invalide');
+      }
+
+      // Log de la réponse parsée en JSON
+      this.logger.debug('Réponse parsée:', {
+        brokerCode: json.response?.broker_response?.broker_code,
+        mappingCode: json.response?.mapping_response?.mapping_code,
+        walletStatus: json.response?.wallet_response?.txnstatus,
+      });
+
+      return json;
+    } catch (error) {
+      this.logger.error('Erreur lors du parsing XML vers JSON', {
+        error: error.message,
+        stack: error.stack,
+        responseData: response?.data,
+      });
+      throw error;
+    }
   }
 }
