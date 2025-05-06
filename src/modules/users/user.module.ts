@@ -5,9 +5,10 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { TangoModule } from '../addon/tango/tango.module';
 import { ConfigModule } from '@nestjs/config';
 import { CoreApiModule } from '../addon/core-api/core-api.module';
+import { TransactionModule } from '../transaction/transaction.module';
 
 @Module({
-  imports: [PrismaModule, TangoModule, ConfigModule, CoreApiModule],
+  imports: [PrismaModule, TangoModule, ConfigModule, CoreApiModule,TransactionModule],
   controllers: [UsersController],
   providers: [UserService],
   exports: [UserService],

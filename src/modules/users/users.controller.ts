@@ -37,7 +37,12 @@ export class UsersController {
   @ApiResponse({ status: 500, description: 'Internal server error.' })
   async getUserDetails(@Query('msisdn') msisdn: string , @Query('pin') pin: string) {
     try {
-      const user = await this.userService.getUser(msisdn, pin);
+      let userInfo = {
+        msisdn: msisdn,
+        pin: pin,
+
+      }
+      const user = await this.userService.getUser(userInfo);
       return user;
     } catch (error) {
       if (error.message.includes('Unauthorized')) {
