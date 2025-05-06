@@ -1,19 +1,29 @@
-import { IsNotEmpty, IsString, Length } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class ReadQRCodeDto {
+export class PayByQRCodeDto {
   @ApiProperty({ description: 'Contenu du QR code à lire' })
   @IsString()
   @IsNotEmpty()
-  qrCodeContent: string;
+  content: string;
 
-  @ApiProperty({ example: 'FR', description: 'Code pays ISO du QR code' })
+  @ApiProperty({ example: '070XXXXXX', description: 'numero du client' })
   @IsString()
-  @Length(2, 2)
-  countryCode: string;
+  from: string;
 
-  @ApiProperty({ example: 'partner1', description: 'ID du partenaire QR code' })
+  @ApiProperty({ example: '0707000000', description: 'numero ou code marchant ' })
+  @IsString()
+  @IsOptional()
+  to: string;
+
+  @ApiProperty({ example: '0000', description: 'pin du client' })
   @IsString()
   @IsNotEmpty()
-  partnerId: string;
+  pin: string;
+
+  @ApiProperty({ example: '1000', description: 'montant' })
+  @IsString()
+  @IsNotEmpty()
+  amount: string;
+
 }

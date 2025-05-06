@@ -1,13 +1,13 @@
 import {
   Injectable,
   Logger,
-  BadRequestException,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
-
 import { CoreApiService } from '../addon/core-api/core-api.service';
 import { TangoService } from '../addon/tango/tango.service';
 import { ConfigService } from '@nestjs/config';
+import { TangoApiError } from '../addon/tango/interfaces/tango-error.interface';
 
 @Injectable()
 export class UserService {
@@ -21,7 +21,9 @@ export class UserService {
 
   async getUser(msisdn: string, pin: string) {
     if (!msisdn || !pin) {
-      throw new BadRequestException('MSISDN et PIN sont requis');
+      throw new BadRequestException(
+        'Le numéro de téléphone et le code PIN sont requis',
+      );
     }
 
     try {
@@ -30,12 +32,6 @@ export class UserService {
         country_id: this.config.get<string>('defaultCountry') || 'ci',
         pin,
       });
-
-      if (!response) {
-        throw new UnauthorizedException(
-          'Utilisateur non trouvé ou identifiants incorrects',
-        );
-      }
 
       return response;
     } catch (error) {
@@ -47,8 +43,8 @@ export class UserService {
         },
       );
 
-      if (error.response?.status === 401) {
-        throw new UnauthorizedException('Identifiants invalides');
+      if (error instanceof TangoApiError) {
+        throw new UnauthorizedException(error.message || 'Code PIN incorrect');
       }
 
       throw error;
@@ -56,21 +52,68 @@ export class UserService {
   }
 
   async getUserBalance(msisdn: string, pin: string) {
-    return this.tangoService.getCustomerBalance({
-      msisdn,
-      pin,
+    if (!msisdn || !pin) {
+      throw new BadRequestException(
+        'Le numéro de téléphone et le code PIN sont requis',
+      );
+    }
 
-      country_id: 'ci',
-      addon_id:
-        this.config.get<string>('addon.brokerAddonId') || '32nd5KAPPqfs49',
-    });
+    try {
+      return await this.tangoService.getCustomerBalance({
+        msisdn,
+        pin,
+        country_id: 'ci',
+        addon_id:
+          this.config.get<string>('addon.brokerAddonId') || '32nd5KAPPqfs49',
+      });
+    } catch (error) {
+      this.logger.error(
+        `Erreur lors de la récupération du solde: ${error.message}`,
+        {
+          msisdn,
+          error: error.stack,
+        },
+      );
+
+      if (error instanceof TangoApiError) {
+        throw new UnauthorizedException(error.message || 'Code PIN incorrect');
+      }
+
+      throw new BadRequestException(
+        'Impossible de récupérer le solde. Veuillez réessayer plus tard.',
+      );
+    }
   }
 
   async getUserTranscactions(msisdn: string, pin: string) {
-    return this.tangoService.customerLastNTransaction({
-      msisdn,
-      pin,
-      country_id: 'ci',
-    });
+    if (!msisdn || !pin) {
+      throw new BadRequestException(
+        'Le numéro de téléphone et le code PIN sont requis',
+      );
+    }
+
+    try {
+      return await this.tangoService.customerLastNTransaction({
+        msisdn,
+        pin,
+        country_id: 'ci',
+      });
+    } catch (error) {
+      this.logger.error(
+        `Erreur lors de la récupération des transactions: ${error.message}`,
+        {
+          msisdn,
+          error: error.stack,
+        },
+      );
+
+      if (error instanceof TangoApiError) {
+        throw new UnauthorizedException(error.message || 'Code PIN incorrect');
+      }
+
+      throw new BadRequestException(
+        'Impossible de récupérer les transactions. Veuillez réessayer plus tard.',
+      );
+    }
   }
 }

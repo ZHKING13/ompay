@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
@@ -15,6 +15,11 @@ import {
   TangoResponse,
   TangoBalanceResponse,
 } from './interfaces/tango-response.interface';
+import {
+  TangoApiError,
+  TangoMappingCode,
+  TangoTxnStatus,
+} from './interfaces/tango-error.interface';
 
 @Injectable()
 export class TangoService {
@@ -31,6 +36,94 @@ export class TangoService {
     @InjectMetric('tango_api_request_duration_seconds')
     private readonly durationHistogram: Histogram<string>,
   ) {}
+
+  private validateTangoResponse(response: TangoResponse): void {
+    const { broker_response, mapping_response, wallet_response } =
+      response.response;
+
+    this.logger.debug('Validation de la réponse Tango', {
+      brokerCode: broker_response?.broker_code,
+      mappingCode: mapping_response?.mapping_code,
+      txnStatus: wallet_response?.txnstatus,
+      message: wallet_response?.message,
+    });
+
+    // Vérification du succès de la transaction
+    const isSuccess =
+      mapping_response?.mapping_code === TangoMappingCode.SUCCESS &&
+      wallet_response?.txnstatus === TangoTxnStatus.SUCCESS;
+
+    if (isSuccess) {
+      return;
+    }
+
+    // Gestion des différents cas d'erreur
+    switch (wallet_response?.txnstatus) {
+      case TangoTxnStatus.PIN_INCORRECT:
+        throw new TangoApiError(
+          mapping_response?.mapping_code,
+          wallet_response?.txnstatus,
+          'Code PIN incorrect',
+          broker_response?.session_id,
+        );
+
+      case TangoTxnStatus.INSUFFICIENT_BALANCE:
+        throw new TangoApiError(
+          mapping_response?.mapping_code,
+          wallet_response?.txnstatus,
+          'Solde insuffisant',
+          broker_response?.session_id,
+        );
+
+      case TangoTxnStatus.INVALID_MSISDN:
+        throw new TangoApiError(
+          mapping_response?.mapping_code,
+          wallet_response?.txnstatus,
+          'Numéro de téléphone invalide',
+          broker_response?.session_id,
+        );
+
+      case TangoTxnStatus.ACCOUNT_NOT_FOUND:
+        throw new TangoApiError(
+          mapping_response?.mapping_code,
+          wallet_response?.txnstatus,
+          'Compte non trouvé',
+          broker_response?.session_id,
+        );
+
+      case TangoTxnStatus.ACCOUNT_BLOCKED:
+        throw new TangoApiError(
+          mapping_response?.mapping_code,
+          wallet_response?.txnstatus,
+          'Compte bloqué',
+          broker_response?.session_id,
+        );
+
+      case TangoTxnStatus.TIMEOUT:
+        throw new TangoApiError(
+          mapping_response?.mapping_code,
+          wallet_response?.txnstatus,
+          'La requête a expiré',
+          broker_response?.session_id,
+        );
+
+      case TangoTxnStatus.SERVICE_UNAVAILABLE:
+        throw new TangoApiError(
+          mapping_response?.mapping_code,
+          wallet_response?.txnstatus,
+          'Service temporairement indisponible',
+          broker_response?.session_id,
+        );
+
+      default:
+        throw new TangoApiError(
+          mapping_response?.mapping_code,
+          wallet_response?.txnstatus,
+          wallet_response?.message || 'Une erreur est survenue',
+          broker_response?.session_id,
+        );
+    }
+  }
 
   async getCustomerBalance(params: {
     msisdn: string;
@@ -70,11 +163,25 @@ export class TangoService {
       this.logger.log(`GET /wallet/customerbalance responded in ${duration}ms`);
 
       const rawResponse = this.parseXmlToJson(response) as TangoResponse;
+
+      try {
+        this.validateTangoResponse(rawResponse);
+      } catch (error) {
+        if (error instanceof TangoApiError) {
+          if (error.txnStatus === TangoTxnStatus.PIN_INCORRECT) {
+            throw new UnauthorizedException('Code PIN incorrect');
+          }
+          throw error;
+        }
+        throw error;
+      }
+
       return this.transformBalanceResponse(rawResponse);
     } catch (error) {
       const duration = Date.now() - start;
       this.logger.error(
         `GET /wallet/customerbalance failed after ${duration}ms: ${error.message}`,
+        { error: error.stack, params: { ...params, pin: '****' } },
       );
       throw error;
     } finally {
@@ -133,7 +240,7 @@ export class TangoService {
     country_id: string;
     addon_id: string;
   }) {
-    const baseUrl = this.config.get('addon.brokerUrl');
+    const baseUrl = this.config.get('addon.tangoUrl');
     const url = new URL('/pricing', baseUrl);
     const fullParams = buildGetFeesParams(params);
     this.logger.log(`url PRICING: ${url}`);
@@ -183,7 +290,7 @@ export class TangoService {
     txnmode: 'P2P';
     country_id: string;
   }) {
-    const baseUrl = this.config.get('addon.brokerUrl');
+    const baseUrl = this.config.get('addon.tangoUrl');
     const url = new URL('/p2pinit', baseUrl);
     const fullParams = buildP2PInitParams(params);
     this.logger.log(`url P2P: ${url}`);
@@ -235,7 +342,7 @@ export class TangoService {
     service_id?: string;
     country_id: string;
   }) {
-    const baseUrl = this.config.get('addon.brokerUrl');
+    const baseUrl = this.config.get('addon.tangoUrl');
     const url = new URL('/merchantpaymentonestep', baseUrl);
     const fullParams = buildMerchantPaymentParams(params);
 
@@ -283,7 +390,7 @@ export class TangoService {
     txnmode?: 'P2P' | 'P2B' | 'B2P' | 'B2B';
     country_id: string;
   }) {
-    const baseUrl = this.config.get('addon.brokerUrl');
+    const baseUrl = this.config.get('addon.tangoUrl');
     const url = new URL('/customerlastntransaction', baseUrl);
 
     Object.entries(params).forEach(([key, value]) => {
@@ -330,7 +437,7 @@ export class TangoService {
     blocksms?: 'BOTH' | 'NONE';
     country_id: string;
   }) {
-    const baseUrl = this.config.get('addon.brokerUrl');
+    const baseUrl = this.config.get('addon.tangoUrl');
     const url = new URL('/userenquiry', baseUrl);
 
     this.logger.log(
@@ -388,23 +495,19 @@ export class TangoService {
       }
 
       const xml = response.data;
-
-      // Log du XML brut en mode debug
-      this.logger.debug('XML brut reçu:', { xml });
-
       const json = this.parser.parse(xml);
 
-      // Validation basique de la structure de la réponse
       if (!json?.response) {
         this.logger.error('Structure JSON invalide après parsing', { json });
         throw new Error('Structure de réponse invalide');
       }
 
-      // Log de la réponse parsée en JSON
-      this.logger.debug('Réponse parsée:', {
+      // Log détaillé de la réponse
+      this.logger.debug('Réponse Tango parsée', {
         brokerCode: json.response?.broker_response?.broker_code,
         mappingCode: json.response?.mapping_response?.mapping_code,
         walletStatus: json.response?.wallet_response?.txnstatus,
+        sessionId: json.response?.broker_response?.session_id,
       });
 
       return json;

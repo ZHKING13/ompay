@@ -8,10 +8,11 @@ import { QRCodeService } from './qrcode.service';
 import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
 import { PartnerServices } from './services';
 import { QRCodeController } from './qrcode.controller';
+import { TransactionModule } from '../transaction/transaction.module';
 
 
 @Module({
-  imports: [HttpModule, ConfigModule, EventEmitterModule.forRoot()],
+  imports: [HttpModule, ConfigModule, EventEmitterModule.forRoot(),TransactionModule],
   providers: [
     QRCodeService,
     ...PartnerServices,

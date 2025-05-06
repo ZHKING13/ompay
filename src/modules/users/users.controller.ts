@@ -4,6 +4,8 @@ import {
   Query,
   HttpException,
   HttpStatus,
+  Body,
+  Post,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { UserService } from './user.service';
@@ -96,5 +98,21 @@ export class UsersController {
       } catch (error) {
         throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
       }
-    } 
-}
+  }
+  @Post("mpay")
+  @ApiOperation({ summary: "Pay a merchant" })
+  @ApiResponse({
+    status: 200,
+    description: "Payment successful",
+  })
+  @ApiResponse({ status: 500, description: "Internal server error" })
+  async payMerchant(@Body() body: { msisdn: string; pin: string; amount: number }) {
+    try {
+      const { msisdn, pin, amount } = body;
+      return ;
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+  }
+  

@@ -6,6 +6,7 @@ import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import { Counter, Histogram } from 'prom-client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { TangoService } from '../addon/tango/tango.service';
 
 @Injectable()
 export class TransactionService {
@@ -14,96 +15,93 @@ export class TransactionService {
   constructor(
     private prisma: PrismaService,
     @InjectQueue('transaction-processing')
-    private paymentQueue: Queue,
     private configService: ConfigService,
     @InjectMetric('transaction_requests_total')
     private paymentRequestsCounter: Counter,
     @InjectMetric('transaction_processing_duration')
     private paymentDurationHistogram: Histogram,
+    private readonly tango: TangoService,
   ) {}
 
   async createPayment(data: CreateTransactionDto) {
     const startTime = Date.now();
+    this.logger.log('Début de création du paiement...', {
+      data: { ...data, amount: data.amount.toString() },
+    });
 
     try {
+      // Création de la transaction en base
       const payment = await this.prisma.transaction.create({
         data: {
           ...data,
           status: 'Pending',
+          date: new Date(),
         },
       });
 
-      await this.paymentQueue.add(
-        'process-payment',
-        {
-          paymentId: payment.id,
-        },
-        {
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 1000,
-          },
-        },
-      );
+      this.logger.log('Transaction enregistrée en base', {
+        transactionId: payment.id,
+        status: payment.status,
+      });
 
       this.paymentRequestsCounter.inc({ status: 'created' });
       this.paymentDurationHistogram.observe(Date.now() - startTime);
-
-      return payment;
+      let amountToString = data.amount.toString();
+      let result;
+      if (data.type === 'MPay') {
+        result = this.tango.p2pInit({
+          amount: amountToString,
+          msisdn: data.from,
+          msisdn2: data.to,
+          pin: data.pin,
+          blocksms: 'PAYER',
+          txnmode: 'P2P',
+          country_id: '',
+        });
+      } else {
+        result = this.tango.merchantPaymentOneStep({
+          amount: amountToString,
+          mercode: data.to,
+          msisdn2: data.from,
+          pin2: data.pin,
+          blocksms: 'NONE',
+          txnmode: 'P2P',
+          country_id: '',
+        });
+      }
+this.logger.log("Resultat de la requête Tango", result)
+      return result
     } catch (error) {
-      this.logger.error(
-        `Erreur lors de la création du paiement: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error('Erreur lors de la création du paiement', {
+        error: error.message,
+        stack: error.stack,
+        data: { ...data, amount: data.amount.toString() },
+      });
       this.paymentRequestsCounter.inc({ status: 'error' });
       throw error;
     }
   }
 
   async getPaymentStatus(id: string) {
-    return this.prisma.transaction.findUniqueOrThrow({ where: { id } });
-  }
-
-  async processPayment(paymentId: string): Promise<void> {
-    const startTime = Date.now();
-    const payment = await this.prisma.transaction.findUniqueOrThrow({
-      where: { id: paymentId },
+    this.logger.log('Récupération du statut du paiement', {
+      transactionId: id,
     });
-
     try {
-      await this.prisma.transaction.update({
-        where: { id: paymentId },
-        data: { status: 'Completed' },
+      const payment = await this.prisma.transaction.findUniqueOrThrow({
+        where: { id },
       });
 
-      // TODO: appel à l'agrégateur ici
-
-      const processingTime = Date.now() - startTime;
-
-      await this.prisma.transaction.update({
-        where: { id: paymentId },
-        data: {
-          status: 'Completed',
-          date: new Date(),
-        },
+      this.logger.log('Statut du paiement récupéré', {
+        transactionId: id,
+        status: payment.status,
       });
 
-      this.paymentRequestsCounter.inc({ status: 'completed' });
-      this.paymentDurationHistogram.observe(processingTime);
+      return payment;
     } catch (error) {
-      await this.prisma.transaction.update({
-        where: { id: paymentId },
-        data: {
-          status: 'Failed',
-        },
+      this.logger.error('Erreur lors de la récupération du statut', {
+        error: error.message,
+        transactionId: id,
       });
-
-      this.paymentRequestsCounter.inc({ status: 'failed' });
-      this.logger.error(
-        `Erreur lors du traitement du paiement ${paymentId}: ${error.message}`,
-        error.stack,
-      );
       throw error;
     }
   }

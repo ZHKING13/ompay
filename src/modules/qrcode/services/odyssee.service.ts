@@ -10,6 +10,7 @@ export class OdysseeService implements QRCodePartnerService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {}
+  userType: 'MERCHANT' | 'CUSTOMER' ;
 
   id = 'odyssee';
   countryCode = 'CI';

@@ -1,15 +1,13 @@
 import { Process, Processor } from '@nestjs/bull';
+import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { TransactionService } from './transaction.service';
 
 @Processor('transaction-processing')
-export class PaymentProcessor {
-  constructor(private paymentService: TransactionService) {}
+export class TransactionProcessor {
+  private readonly logger = new Logger(TransactionProcessor.name);
 
-  @Process('process-transaction')
-  async handlePayment(job: Job<{ paymentId: string }>) {
-    await this.paymentService.processPayment(job.data.paymentId);
-  }
+  constructor(private readonly transactionService: TransactionService) {}
+
+  
 }
-
-

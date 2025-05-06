@@ -4,6 +4,7 @@ import {
   Get,
   Body,
   Param,
+  Logger,
   UseGuards,
   HttpCode,
   ParseUUIDPipe,
@@ -16,36 +17,39 @@ import {
 } from '@nestjs/swagger';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { TransactionService } from './transaction.service';
-import { Payment } from './entities/transaction.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 
-@ApiTags('Transaction')
-@Controller('transaction')
+@ApiTags('Transactions')
+@Controller('transactions')
 @UseGuards(ThrottlerGuard)
 @ApiBearerAuth()
-export class PaymentController {
-  constructor(private readonly paymentService: TransactionService) {}
+export class TransactionController {
+  private readonly logger = new Logger(TransactionController.name);
 
-  @Post()
-  @HttpCode(202)
-  @ApiOperation({ summary: 'Créer un nouveau paiement' })
-  @ApiResponse({
-    status: 202,
-    description: 'Paiement accepté pour traitement',
-    type: Payment,
-  })
-  async createPayment(@Body() createPaymentDto: CreateTransactionDto) {
-    return this.paymentService.createPayment(createPaymentDto);
-  }
+  constructor(private readonly transactionService: TransactionService) {}
 
-  @Get(':id')
-  @ApiOperation({ summary: "Obtenir le statut d'un paiement" })
-  @ApiResponse({
-    status: 200,
-    description: 'Statut du paiement trouvé',
-    type: Payment,
-  })
-  async getPaymentStatus(@Param('id', ParseUUIDPipe) id: string) {
-    return this.paymentService.getPaymentStatus(id);
-  }
+ 
+  
+
+  // @Get(':id')
+  // @ApiOperation({ summary: "Obtenir le statut d'une transaction" })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Statut de la transaction trouvé',
+  // })
+  // async getTransactionStatus(@Param('id', ParseUUIDPipe) id: string) {
+  //   this.logger.log("Réception d'une requête de statut", { transactionId: id });
+
+  //   const transaction = await this.transactionService.getPaymentStatus(id);
+
+  //   return {
+  //     success: true,
+  //     data: {
+  //       transactionId: transaction.id,
+  //       status: transaction.status,
+  //       amount: transaction.amount,
+  //       date: transaction.date,
+  //     },
+  //   };
+  // }
 }
