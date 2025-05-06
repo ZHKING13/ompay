@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
@@ -18,9 +18,8 @@ export class ApiAuthService {
     const authUrl = this.config.get<string>('addon.brokerAuthUrl');
     const credentials = this.config.get<string>('addon.brokerAccessToken');
     if (!authUrl || !credentials) {
-      throw new Error(
-        'Tango auth configuration is missing in environment variables',
-      );
+      this.logger.error('Broker auth URL or credentials are not set in config');
+      return;
     }
     const headers = {
       Authorization: credentials,
@@ -28,7 +27,9 @@ export class ApiAuthService {
     };
 
     const body = new URLSearchParams({ grant_type: 'client_credentials' });
-
+    this.logger.log('Fetching Tango access token...');
+    this.logger.debug('Auth URL:', authUrl);
+    this.logger.debug('Headers content:', headers);
     try {
       const response = await firstValueFrom(
         this.http.post(authUrl, body.toString(), { headers }),
@@ -39,7 +40,7 @@ export class ApiAuthService {
       this.logger.log('Tango access token fetched successfully');
     } catch (error) {
       this.logger.error('Failed to fetch Tango access token', error.message);
-      throw error;
+      new BadGatewayException('Failed to fetch Tango access token');
     }
   }
 

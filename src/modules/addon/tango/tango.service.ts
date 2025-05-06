@@ -485,7 +485,7 @@ export class TangoService {
         },
       );
       throw error.message;
-    } finally {
+    } finally {  
       endTimer();
     }
   }
