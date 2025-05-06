@@ -5,9 +5,10 @@ import { TangoService } from './tango.service';
 import { ApiAuthService } from 'src/service/auth.service';
 import { MonitoringModule } from 'src/modules/monitoring/monitoring.module';
 import { makeHistogramProvider } from '@willsoto/nestjs-prometheus';
+import { AuthModule } from 'src/service/auth.module';
 
 @Module({
-  imports: [HttpModule, ConfigModule, MonitoringModule],
+  imports: [HttpModule, ConfigModule, MonitoringModule, AuthModule],
   providers: [
     TangoService,
     ApiAuthService,
