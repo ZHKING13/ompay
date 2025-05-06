@@ -15,6 +15,8 @@ import { QRCodeModule } from './modules/qrcode/qrcode.module';
 import { MonitoringModule } from './modules/monitoring/monitoring.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { UserModule } from './modules/users/user.module';
+import { TangoModule } from './modules/addon/tango/tango.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -59,6 +61,8 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     TransactionModule,
     QRCodeModule,
     MonitoringModule,
+    UserModule,
+    TangoModule
   ],
   providers: [
     {
