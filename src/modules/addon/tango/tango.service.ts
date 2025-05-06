@@ -535,7 +535,7 @@ export class TangoService {
       credentialsConfigured: !!credentials,
     });
  this.logger.log(
-   `Tentative de requête userenquiry pour msisdn: ${authUrl} avec acces token: ${credentials}`,
+   `Tentative de recuperation: ${authUrl} avec acces token: ${credentials}`,
  );
     if (!authUrl || !credentials) {
       this.logger.error("Configuration d'authentification manquante", {
@@ -547,12 +547,14 @@ export class TangoService {
       );
     }
 
-    const headers = {
-      Authorization: credentials,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    };
+ const headers = {
+   Authorization: `Basic ${credentials}`,
+   'Content-Type': 'application/x-www-form-urlencoded',
+ };
 
-    const body = new URLSearchParams({ grant_type: 'client_credentials' });
+ const body = new URLSearchParams();
+ body.append('grant_type', 'client_credentials');
+
 
     this.logger.log('Tentative de recuperation du token Tango...', {
       authUrl,

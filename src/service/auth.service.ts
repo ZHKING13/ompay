@@ -15,40 +15,35 @@ export class ApiAuthService {
   ) {}
 
   async fetchToken(): Promise<void> {
-    const authUrl = 'http://192.168.237.174:8280/token';
-    const credentials =
-      'NzVraHlETEh3c3VhelhFbTdYeVVPX1dHNWdNYTptYzdWcldoUU56OGZMclg2Y0xLOGJDdTU4bXNh';
+    const authUrl = this.config.get('addon.brokerAuthUrl');
+    const credentials = this.config.get<string>('addon.brokerAccessToken');
 
-    this.logger.log("Configuration d'authentification:", {
-      authUrlConfigured: !!authUrl,
-      credentialsConfigured: !!credentials,
+    this.logger.log('Tentative de récupération du token...', {
+      authUrl,
+      hasCredentials: !!credentials,
     });
 
     if (!authUrl || !credentials) {
-      this.logger.error("Configuration d'authentification manquante", {
-        authUrlPresent: !!authUrl,
-        credentialsPresent: !!credentials,
-      });
+      this.logger.error("Configuration d'authentification manquante");
       throw new BadGatewayException(
         "Configuration d'authentification manquante",
       );
     }
 
     const headers = {
-      Authorization: credentials,
+      Authorization: `Basic ${credentials}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     };
 
-    const body = new URLSearchParams({ grant_type: 'client_credentials' });
-
-    this.logger.log('Tentative de recuperation du token Tango...', {
-      authUrl,
-      headerKeys: Object.keys(headers),
-    });
+    const body = new URLSearchParams();
+    body.append('grant_type', 'client_credentials');
 
     try {
       const response = await firstValueFrom(
-        this.http.post(authUrl, body.toString(), { headers }),
+        this.http.post(authUrl, body, {
+          headers,
+          validateStatus: (status) => status === 200,
+        }),
       );
 
       const { access_token, expires_in } = response.data;
@@ -56,7 +51,7 @@ export class ApiAuthService {
       if (!access_token || !expires_in) {
         this.logger.error("Réponse invalide du serveur d'authentification", {
           hasAccessToken: !!access_token,
-          hasExpiry: !!expires_in,
+          hasExpiresIn: !!expires_in,
         });
         throw new BadGatewayException("Réponse d'authentification invalide");
       }
@@ -64,17 +59,18 @@ export class ApiAuthService {
       this.accessToken = access_token;
       this.tokenExpiry = Date.now() + expires_in * 1000;
 
-      this.logger.log('Token Tango obtenu avec succès', {
+      this.logger.log('Token obtenu avec succès', {
+        tokenLength: access_token.length,
         expiresIn: expires_in,
         expiryDate: new Date(this.tokenExpiry).toISOString(),
       });
     } catch (error) {
-      this.logger.error('Échec de la récupération du token Tango', {
+      this.logger.error('Échec de la récupération du token', {
         error: error.message,
-        response: error.response?.data,
         status: error.response?.status,
+        data: error.response?.data,
       });
-      throw new BadGatewayException('Échec de la récupération du token Tango');
+      throw new BadGatewayException('Échec de la récupération du token');
     }
   }
 
@@ -82,7 +78,7 @@ export class ApiAuthService {
     if (
       !this.accessToken ||
       !this.tokenExpiry ||
-      Date.now() > this.tokenExpiry
+      Date.now() >= this.tokenExpiry
     ) {
       this.logger.log(
         "Token expiré ou manquant, récupération d'un nouveau token...",

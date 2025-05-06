@@ -41,7 +41,7 @@ export class FastPayQRService implements QRCodePartnerService {
 
     try {
       const url = new URL(content);
-      const merchantId = url.searchParams.get('merchantId');
+      const merchantId = url.searchParams.get('merchantCode');
       if (!merchantId) {
         this.logger.warn('ID marchand manquant dans le QR code');
         throw new BadRequestException('ID marchand manquant');
