@@ -22,11 +22,11 @@ services:
       - redis-data:/data
 
   backend:
-    image: ompay-backend
+    image: ua-ompay-registry.gos.orange.com/ompay/api:0.0.1
     container_name: ompay-api
     restart: always
     ports:
-      - '3000:3000'
+      - '3002:3001'
     environment:
       DATABASE_URL: postgres://ompay:ompaypass@postgres:5432/ompaydb
       REDIS_HOST: redis
@@ -36,8 +36,7 @@ services:
       - postgres
       - redis
     volumes:
-      - .:/app
-      - /app/node_modules
+      - .env:/app/.env
 
 volumes:
   postgres-data:
