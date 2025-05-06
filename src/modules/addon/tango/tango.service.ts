@@ -1,4 +1,9 @@
-import { BadGatewayException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
@@ -20,6 +25,7 @@ import {
   TangoMappingCode,
   TangoTxnStatus,
 } from './interfaces/tango-error.interface';
+import { log } from 'console';
 
 @Injectable()
 export class TangoService {
@@ -440,7 +446,9 @@ export class TangoService {
     country_id: string;
   }) {
     const baseUrl = this.config.get('addon.brokerUrl');
-    const url = new URL('/userenquiry', baseUrl);
+    const url = new URL('/omBrokerWalletProxyServices/v3/userenquiry', baseUrl);
+    
+    this.logger.log(`${url}`, url);
 
     this.logger.log(
       `Tentative de requête userenquiry pour msisdn: ${params.msisdn}`,
@@ -534,9 +542,9 @@ export class TangoService {
       authUrlConfigured: !!authUrl,
       credentialsConfigured: !!credentials,
     });
- this.logger.log(
-   `Tentative de recuperation: ${authUrl} avec acces token: ${credentials}`,
- );
+    this.logger.log(
+      `Tentative de recuperation: ${authUrl} avec acces token: ${credentials}`,
+    );
     if (!authUrl || !credentials) {
       this.logger.error("Configuration d'authentification manquante", {
         authUrlPresent: !!authUrl,
@@ -547,50 +555,40 @@ export class TangoService {
       );
     }
 
- const headers = {
-   Authorization: `Basic ${credentials}`,
-   'Content-Type': 'application/x-www-form-urlencoded',
- };
-
- const body = new URLSearchParams();
- body.append('grant_type', 'client_credentials');
-
+    const headers = {
+      Authorization: `Basic ${credentials}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+this.logger.log(authUrl)
+    const body = new URLSearchParams();
+    body.append('grant_type', 'client_credentials');
 
     this.logger.log('Tentative de recuperation du token Tango...', {
       authUrl,
       headerKeys: Object.keys(headers),
     });
 
-    try {
-      const response = await firstValueFrom(
-        this.http.post(authUrl, body.toString(), { headers }),
-      );
+    const response = await firstValueFrom(
+      this.http.post(authUrl, body.toString(), { headers }),
+    );
+this.logger.log('Réponse du serveur d\'authentification', )
+    const { access_token, expires_in } = response.data;
 
-      const { access_token, expires_in } = response.data;
-
-      if (!access_token || !expires_in) {
-        this.logger.error("Réponse invalide du serveur d'authentification", {
-          hasAccessToken: !!access_token,
-          hasExpiry: !!expires_in,
-        });
-        throw new BadGatewayException("Réponse d'authentification invalide");
-      }
-
-      this.accessToken = access_token;
-      this.tokenExpiry = Date.now() + expires_in * 1000;
-
-      this.logger.log('Token Tango obtenu avec succès', {
-        expiresIn: expires_in,
-        expiryDate: new Date(this.tokenExpiry).toISOString(),
+    if (!access_token || !expires_in) {
+      this.logger.error("Réponse invalide du serveur d'authentification", {
+        hasAccessToken: !!access_token,
+        hasExpiry: !!expires_in,
       });
-    } catch (error) {
-      this.logger.error('Échec de la récupération du token Tango', {
-        error: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-      });
-      throw new BadGatewayException('Échec de la récupération du token Tango');
+      throw new BadGatewayException("Réponse d'authentification invalide");
     }
+
+    this.accessToken = access_token;
+    this.tokenExpiry = Date.now() + expires_in * 1000;
+
+    this.logger.log('Token Tango obtenu avec succès', {
+      expiresIn: expires_in,
+      expiryDate: new Date(this.tokenExpiry).toISOString(),
+    });
   }
   async getAccessToken(): Promise<string> {
     if (
