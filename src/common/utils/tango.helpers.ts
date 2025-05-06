@@ -42,6 +42,7 @@ export function buildP2PInitParams(params: {
     blocksms: params.blocksms ?? 'NONE',
     provider: params.provider ?? '101',
     provider2: params.provider2 ?? '101',
+    addon_id: '32nd5KAPPsfq94',
   };
 }
 export function buildGetFeesParams(params: {
@@ -83,6 +84,7 @@ export function buildUserEnquiryParams(params: {
     blocksms: params.blocksms ?? 'BOTH',
     provider: params.provider ?? '101',
     usertype: params.usertype ?? 'SUBSCRIBER',
+    addon_id: '32nd5KAPPsfq94',
   };
 }
 export function buildUserLastTransactionParams(params: {
@@ -101,7 +103,9 @@ export function buildUserLastTransactionParams(params: {
     ...params,
     payid: params.payid ?? '12',
     blocksms: params.blocksms ?? 'BOTH',
-      provider: params.provider ?? '101',
+    provider: params.provider ?? '101',
     nooftxnreq: params.nooftxnreq ?? '5',
+    addon_id: '32nd5KAPPsfq94',
   };
 }
+

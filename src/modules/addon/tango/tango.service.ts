@@ -146,7 +146,10 @@ export class TangoService {
     addon_id: string;
   }): Promise<TangoBalanceResponse> {
     const baseUrl = this.config.get('addon.brokerUrl');
-    const url = new URL('/customerbalance', baseUrl);
+    const url = new URL(
+      '/omBrokerWalletProxyServices/v3/customerbalance',
+      baseUrl,
+    );
 
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -249,7 +252,7 @@ export class TangoService {
     addon_id: string;
   }) {
     const baseUrl = this.config.get('addon.brokerUrl');
-    const url = new URL('/pricing', baseUrl);
+    const url = new URL('/omBrokerWalletProxyServices/v3/pricing', baseUrl);
     const fullParams = buildGetFeesParams(params);
     this.logger.log(`url PRICING: ${url}`);
     Object.entries(fullParams).forEach(([key, value]) => {
@@ -299,7 +302,7 @@ export class TangoService {
     country_id: string;
   }) {
     const baseUrl = this.config.get('addon.brokerUrl');
-    const url = new URL('/p2pinit', baseUrl);
+    const url = new URL('/omBrokerWalletProxyServices/v3/p2pinit', baseUrl);
     const fullParams = buildP2PInitParams(params);
     this.logger.log(`url P2P: ${url}`);
     Object.entries(fullParams).forEach(([key, value]) => {
@@ -351,7 +354,10 @@ export class TangoService {
     country_id: string;
   }) {
     const baseUrl = this.config.get('addon.brokerUrl');
-    const url = new URL('/merchantpaymentonestep', baseUrl);
+    const url = new URL(
+      '/omBrokerWalletProxyServices/v3/merchantpaymentonestep',
+      baseUrl,
+    );
     const fullParams = buildMerchantPaymentParams(params);
 
     Object.entries(fullParams).forEach(([key, value]) => {
@@ -399,7 +405,10 @@ export class TangoService {
     country_id: string;
   }) {
     const baseUrl = this.config.get('addon.brokerUrl');
-    const url = new URL('/customerlastntransaction', baseUrl);
+    const url = new URL(
+      '/omBrokerWalletProxyServices/v3/customerlastntransaction',
+      baseUrl,
+    );
 
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
