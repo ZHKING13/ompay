@@ -34,7 +34,6 @@ export class RequestContextMiddleware implements NestMiddleware {
       requestId,
       method: req.method,
       url: req.url,
-      headers: req.headers,
       query: req.query,
       body: req.body,
       country: req.requestContext.country,

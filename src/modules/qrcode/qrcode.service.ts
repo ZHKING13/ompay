@@ -25,10 +25,18 @@ export class QRCodeService {
     if (!result.merchantAgentCode) {
       throw new BadRequestException('Aucune information trouvée');
     }
-   
   }
   async payMarchant(body: PayByQRCodeDto) {
-    const { content,amount,from,to } = body;
+    const { content, amount, from, to } = body;
+    if (content === undefined || content === null) {
+   return   await this.TransctionsService.createPayment({
+        type: 'MPay',
+        from: from,
+        to: to,
+        amount: parseFloat(amount),
+        pin: body.pin,
+      });
+    }
     const partner = this.partners.find((p) => p.supports(content));
     if (!partner) {
       throw new BadRequestException('Aucun partenaire compatible');
@@ -39,12 +47,11 @@ export class QRCodeService {
       throw new BadRequestException('Aucune information trouvée');
     }
     await this.TransctionsService.createPayment({
-      type: 'MPay',
+      type: result.type == 'MERCHANT' ? 'MPay' : 'P2P',
       from: partner.id,
       to: result.merchantAgentCode,
-      amount: 10,
+      amount: parseFloat(amount),
       pin: body.pin,
     });
-    
   }
 }

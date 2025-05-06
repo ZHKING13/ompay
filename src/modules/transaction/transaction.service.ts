@@ -25,17 +25,25 @@ export class TransactionService {
 
   async createPayment(data: CreateTransactionDto) {
     const startTime = Date.now();
-    this.logger.log('Début de création du paiement...', {
+    this.logger.log('Debut de creation du paiement...', {
       data: { ...data, amount: data.amount.toString() },
     });
 
     try {
       // Création de la transaction en base
+      let body = {
+        type: data.type,
+        from: data.from,
+        to: data.to,
+        amount: data.amount,
+      };
+
       const payment = await this.prisma.transaction.create({
         data: {
-          ...data,
+          ...body,
           status: 'Pending',
           date: new Date(),
+         
         },
       });
 
@@ -87,14 +95,16 @@ this.logger.log("Resultat de la requête Tango", result)
       transactionId: id,
     });
     try {
-      const payment = await this.prisma.transaction.findUniqueOrThrow({
-        where: { id },
+      const payment = await this.prisma.transaction.findMany({
+      
       });
 
-      this.logger.log('Statut du paiement récupéré', {
-        transactionId: id,
-        status: payment.status,
-      });
+      if (!payment) {
+        this.logger.warn('Aucune transaction trouvée', {
+          transactionId: id,
+        });
+        throw new Error('Transaction non trouvée');
+      }
 
       return payment;
     } catch (error) {

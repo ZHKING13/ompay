@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { UserService } from './user.service';
+import { InitP2PDto } from './dto/p2p.dto';
+import { PayByQRCodeDto } from '../qrcode/dto/read-qr-code.dto';
 
 @ApiTags('users')
 @Controller('users')
@@ -111,10 +113,24 @@ export class UsersController {
     description: "Payment successful",
   })
   @ApiResponse({ status: 500, description: "Internal server error" })
-  async payMerchant(@Body() body: { msisdn: string; pin: string; amount: number }) {
+  async payMerchant(@Body() body: PayByQRCodeDto) {
     try {
-      const { msisdn, pin, amount } = body;
-      return ;
+      const { from, pin, amount } = body;
+      return this.userService.initMerchPayment(body) ;
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+  @Post("p2p")
+  @ApiOperation({ summary: "Pay a merchant" })
+  @ApiResponse({
+    status: 200,
+    description: "Payment successful",
+  })
+  @ApiResponse({ status: 500, description: "Internal server error" })
+  async p2pInit(@Body() body: InitP2PDto) {
+    try {
+      return await this.userService.iniP2PTransaction(body);
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }

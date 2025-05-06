@@ -18,13 +18,13 @@ import { Registry } from 'prom-client';
     }),
     EventEmitterModule.forRoot(),
   ],
-  controllers: [MonitoringController, HealthController],
+  controllers: [ HealthController],
   providers: [
     MonitoringService,
     MetricsRegistryService,
     {
       provide: Registry,
-      useValue: new Registry(), // <-- nécessaire pour injecter le Registry
+      useValue: new Registry(), 
     },
   ],
   exports: [MonitoringService, MetricsRegistryService],

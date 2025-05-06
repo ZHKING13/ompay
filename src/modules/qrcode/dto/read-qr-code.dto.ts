@@ -4,7 +4,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export class PayByQRCodeDto {
   @ApiProperty({ description: 'Contenu du QR code à lire' })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   content: string;
 
   @ApiProperty({ example: '070XXXXXX', description: 'numero du client' })

@@ -137,7 +137,7 @@ export class TangoService {
     country_id: string;
     addon_id: string;
   }): Promise<TangoBalanceResponse> {
-    const baseUrl = this.config.get('addon.tangoUrl');
+    const baseUrl = this.config.get('addon.brokerUrl');
     const url = new URL('/customerbalance', baseUrl);
 
     Object.entries(params).forEach(([key, value]) => {
@@ -240,7 +240,7 @@ export class TangoService {
     country_id: string;
     addon_id: string;
   }) {
-    const baseUrl = this.config.get('addon.tangoUrl');
+    const baseUrl = this.config.get('addon.brokerUrl');
     const url = new URL('/pricing', baseUrl);
     const fullParams = buildGetFeesParams(params);
     this.logger.log(`url PRICING: ${url}`);
@@ -290,7 +290,7 @@ export class TangoService {
     txnmode: 'P2P';
     country_id: string;
   }) {
-    const baseUrl = this.config.get('addon.tangoUrl');
+    const baseUrl = this.config.get('addon.brokerUrl');
     const url = new URL('/p2pinit', baseUrl);
     const fullParams = buildP2PInitParams(params);
     this.logger.log(`url P2P: ${url}`);
@@ -342,7 +342,7 @@ export class TangoService {
     service_id?: string;
     country_id: string;
   }) {
-    const baseUrl = this.config.get('addon.tangoUrl');
+    const baseUrl = this.config.get('addon.brokerUrl');
     const url = new URL('/merchantpaymentonestep', baseUrl);
     const fullParams = buildMerchantPaymentParams(params);
 
@@ -390,7 +390,7 @@ export class TangoService {
     txnmode?: 'P2P' | 'P2B' | 'B2P' | 'B2B';
     country_id: string;
   }) {
-    const baseUrl = this.config.get('addon.tangoUrl');
+    const baseUrl = this.config.get('addon.brokerUrl');
     const url = new URL('/customerlastntransaction', baseUrl);
 
     Object.entries(params).forEach(([key, value]) => {
@@ -437,7 +437,7 @@ export class TangoService {
     blocksms?: 'BOTH' | 'NONE';
     country_id: string;
   }) {
-    const baseUrl = this.config.get('addon.tangoUrl');
+    const baseUrl = this.config.get('addon.brokerUrl');
     const url = new URL('/userenquiry', baseUrl);
 
     this.logger.log(
@@ -456,11 +456,13 @@ export class TangoService {
     });
 
     try {
+      this.logger.log(`Envoi de la requete vers : ${url.toString()}`);
+      this.logger.log(`Params de la requete : ${JSON.stringify(params)}`);
       const headers = {
         Authorization: `Bearer ${await this.authService.getAccessToken()}`,
       };
 
-      this.logger.log(`Envoi de la requête vers : ${url.toString()}`);
+      this.logger.log(`Envoi de la requete vers : ${url.toString()}`);
 
       const response = await firstValueFrom(
         this.http.get(url.toString(), { headers }),
@@ -482,7 +484,7 @@ export class TangoService {
           params,
         },
       );
-      throw error;
+      throw error.message;
     } finally {
       endTimer();
     }

@@ -130,5 +130,14 @@ export class UserService {
       pin: body.pin,
       type: 'P2P',
     });
-  }
+    }
+    async initMerchPayment(body: InitP2PDto) {
+        return this.transctionService.createPayment({
+            from: body.from,
+            to: body.to,
+            amount: parseFloat(body.amount),
+            pin: body.pin,
+            type: 'MPay',
+        });
+    }
 }

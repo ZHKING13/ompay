@@ -27,17 +27,6 @@ import { TangoModule } from './modules/addon/tango/tango.module';
 
     PrismaModule,
 
-    BullModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        redis: {
-          host: configService.get<string>('redis.host'),
-          port: configService.get<number>('redis.port'),
-        },
-      }),
-      inject: [ConfigService],
-    }),
-
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -55,14 +44,14 @@ import { TangoModule } from './modules/addon/tango/tango.module';
           process.env.NODE_ENV !== 'production'
             ? { target: 'pino-pretty' }
             : undefined,
-        level: process.env.LOG_LEVEL || 'debug', 
+        level: process.env.LOG_LEVEL || 'debug',
       },
-    }), 
+    }),
     TransactionModule,
     QRCodeModule,
     MonitoringModule,
     UserModule,
-    TangoModule
+    TangoModule,
   ],
   providers: [
     {
