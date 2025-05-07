@@ -62,9 +62,8 @@ export class TransactionService {
           msisdn: data.from,
           msisdn2: data.to,
           pin: data.pin,
-          blocksms: 'PAYER',
-          txnmode: 'P2P',
-          country_id: '',
+          blocksms: 'NONE',
+          country_id: 'ci',
         });
       } else {
         result = this.tango.merchantPaymentOneStep({
@@ -73,11 +72,10 @@ export class TransactionService {
           msisdn2: data.from,
           pin2: data.pin,
           blocksms: 'NONE',
-          txnmode: 'P2P',
-          country_id: '',
+          country_id: 'ci',
         });
       }
-this.logger.log("Resultat de la requête Tango", result)
+this.logger.log(`resultats de la requete tango ${result}`)
       return result
     } catch (error) {
       this.logger.error('Erreur lors de la création du paiement', {

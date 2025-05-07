@@ -122,7 +122,7 @@ export class UsersController {
     }
   }
   @Post("p2p")
-  @ApiOperation({ summary: "Pay a merchant" })
+  @ApiOperation({ summary: "p2p transfert" })
   @ApiResponse({
     status: 200,
     description: "Payment successful",

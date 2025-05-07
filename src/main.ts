@@ -9,7 +9,7 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   // Création de l'application avec Pino Logger
   const app = await NestFactory.create(AppModule, {
-    bufferLogs: true,
+    bufferLogs: false,
     logger: ['log', 'error', 'warn', 'debug'],
   });
   app.useLogger(app.get(Logger));

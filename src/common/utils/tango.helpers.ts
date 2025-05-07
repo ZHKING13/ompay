@@ -15,10 +15,12 @@ export function buildMerchantPaymentParams(params: {
 }) {
   return {
     ...params,
-    msisdn: params.msisdn ?? '',
+   
     payid: params.payid ?? '12',
     payid2: params.payid2 ?? '12',
     blocksms: params.blocksms ?? 'NONE',
+    addon_id: '32nd5KAPPsfq94',
+    country_id:  'ci',
   };
 }
 export function buildP2PInitParams(params: {
@@ -32,7 +34,6 @@ export function buildP2PInitParams(params: {
   payid?: string;
   payid2?: string;
   blocksms: 'PAYER' | 'BOTH' | 'PAYEE' | 'NONE';
-  txnmode: 'P2P';
   country_id: string;
 }) {
   return {
@@ -74,7 +75,7 @@ export function buildUserEnquiryParams(params: {
   msisdn: string;
   provider?: string;
   payid?: string;
-  usertype?: 'CHANNEL' | 'SUBSCRIBER' | 'MERCHANT' | 'OPERATOR';
+  usertype?: 'CHANNEL' | 'SUBSCRIBER' | 'MERCHANT' | 'CUSTOMER';
   blocksms?: 'BOTH' | 'NONE';
   country_id: string;
 }) {
@@ -83,8 +84,9 @@ export function buildUserEnquiryParams(params: {
     payid: params.payid ?? '12',
     blocksms: params.blocksms ?? 'BOTH',
     provider: params.provider ?? '101',
-    usertype: params.usertype ?? 'SUBSCRIBER',
+    usertype: params.usertype ?? 'CUSTOMER',
     addon_id: '32nd5KAPPsfq94',
+   
   };
 }
 export function buildUserLastTransactionParams(params: {
@@ -106,6 +108,7 @@ export function buildUserLastTransactionParams(params: {
     provider: params.provider ?? '101',
     nooftxnreq: params.nooftxnreq ?? '5',
     addon_id: '32nd5KAPPsfq94',
+    usertype:"CUSTOMER",
   };
 }
 

@@ -45,14 +45,13 @@ export class UserService {
         {
           msisdn,
           error: error.stack,
-          },
-        );
-        
-        if (error instanceof TangoApiError) {
-            throw new UnauthorizedException(error.message || 'Code PIN incorrect');
-        }
-        
-       
+        },
+      );
+
+      if (error instanceof TangoApiError) {
+        throw new UnauthorizedException(error.message || 'Code PIN incorrect');
+      }
+
       throw error;
     }
   }
@@ -64,31 +63,13 @@ export class UserService {
       );
     }
 
-    try {
-      return await this.tangoService.getCustomerBalance({
-        msisdn,
-        pin,
-        country_id: 'ci',
-        addon_id:
-          this.config.get<string>('addon.brokerAddonId') || '32nd5KAPPqfs49',
-      });
-    } catch (error) {
-      this.logger.error(
-        `Erreur lors de la récupération du solde: ${error.message}`,
-        {
-          msisdn,
-          error: error.stack,
-        },
-      );
-
-      if (error instanceof TangoApiError) {
-        throw new UnauthorizedException(error.message || 'Code PIN incorrect');
-      }
-
-      throw new BadRequestException(
-        'Impossible de récupérer le solde. Veuillez réessayer plus tard.',
-      );
-    }
+    return await this.tangoService.getCustomerBalance({
+      msisdn,
+      pin,
+      country_id: 'ci',
+      addon_id: '32nd5KAPPsfq94',
+    });
+    
   }
 
   async getUserTranscactions(msisdn: string, pin: string) {
@@ -98,29 +79,12 @@ export class UserService {
       );
     }
 
-    try {
-      return await this.tangoService.customerLastNTransaction({
-        msisdn,
-        pin,
-        country_id: 'ci',
-      });
-    } catch (error) {
-      this.logger.error(
-        `Erreur lors de la récupération des transactions: ${error.message}`,
-        {
-          msisdn,
-          error: error.stack,
-        },
-      );
-
-      if (error instanceof TangoApiError) {
-        throw new UnauthorizedException(error.message || 'Code PIN incorrect');
-      }
-
-      throw new BadRequestException(
-        'Impossible de récupérer les transactions. Veuillez réessayer plus tard.',
-      );
-    }
+    return await this.tangoService.customerLastNTransaction({
+      msisdn,
+      pin,
+      country_id: 'ci',
+    });
+   
   }
   async iniP2PTransaction(body: InitP2PDto) {
     return this.transctionService.createPayment({
@@ -130,14 +94,14 @@ export class UserService {
       pin: body.pin,
       type: 'P2P',
     });
-    }
-    async initMerchPayment(body: InitP2PDto) {
-        return this.transctionService.createPayment({
-            from: body.from,
-            to: body.to,
-            amount: parseFloat(body.amount),
-            pin: body.pin,
-            type: 'MPay',
-        });
-    }
+  }
+  async initMerchPayment(body: InitP2PDto) {
+    return this.transctionService.createPayment({
+      from: body.from,
+      to: body.to,
+      amount: parseFloat(body.amount),
+      pin: body.pin,
+      type: 'MPay',
+    });
+  }
 }
